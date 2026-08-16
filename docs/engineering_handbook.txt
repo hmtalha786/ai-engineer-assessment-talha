@@ -1,0 +1,13 @@
+Engineering Team Handbook
+
+Production deployments require one approving reviewer and a green automated test suite.
+Routine releases take place on Tuesdays and Thursdays between 14:00 and 16:00 UTC.
+Emergency releases require approval from the incident commander and must include a rollback plan.
+
+The primary on-call engineer acknowledges priority-one alerts within ten minutes. If an alert is
+not acknowledged, it escalates to the secondary on-call engineer. All priority-one incidents
+require a written review within three business days.
+
+New backend services use Python 3.11 or newer. Teams should validate external input, keep
+secrets in environment variables, set timeouts on network calls, and write focused tests for core
+business logic.
