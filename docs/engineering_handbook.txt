@@ -1,13 +1,54 @@
 Engineering Team Handbook
 
+DEPLOYMENTS
+
 Production deployments require one approving reviewer and a green automated test suite.
-Routine releases take place on Tuesdays and Thursdays between 14:00 and 16:00 UTC.
-Emergency releases require approval from the incident commander and must include a rollback plan.
+Routine releases take place on Tuesdays and Thursdays between 14:00 and 16:00 UTC. We do not
+deploy on Fridays, during a company holiday, or in the final week of a quarter unless the change
+is a security fix.
+
+Emergency releases require approval from the incident commander and must include a rollback
+plan written before the deploy begins. A rollback plan names the previous known-good release
+tag, the command to restore it, and the expected recovery time. If a rollback would require a
+database migration to be reversed, the plan must say so explicitly and name the engineer who
+will run it.
+
+Every deployment is announced in the #releases channel before it starts and again when it
+finishes. Announcements include the release tag, a one-line summary, and a link to the diff.
+
+ON-CALL AND INCIDENTS
 
 The primary on-call engineer acknowledges priority-one alerts within ten minutes. If an alert is
-not acknowledged, it escalates to the secondary on-call engineer. All priority-one incidents
-require a written review within three business days.
+not acknowledged, it escalates to the secondary on-call engineer after fifteen minutes, and to
+the engineering manager after thirty. On-call rotations last one week and hand over on Monday
+mornings at 10:00 local time.
+
+All priority-one incidents require a written review within three business days. The review is
+blameless: it describes what happened, the timeline, the contributing causes, and the follow-up
+actions with named owners and due dates. Reviews are stored in the incident archive and are
+readable by the whole company.
+
+An incident is priority-one when customer data is at risk, when a core workflow is unavailable
+for more than five minutes, or when the error rate exceeds two percent of requests. Anything
+else is priority-two and is handled during business hours.
+
+CODE REVIEW
+
+Pull requests should be under four hundred changed lines where possible. Larger changes should
+be split, or the author should walk a reviewer through the change before requesting review.
+Reviewers respond within one business day. A review that only says "looks good" is not a review;
+reviewers are expected to have run the code or explained why they did not need to.
+
+Authors do not merge their own pull requests without an approval, with one exception: reverts of
+a change that is currently causing an incident may be merged immediately and reviewed after.
+
+ENGINEERING STANDARDS
 
 New backend services use Python 3.11 or newer. Teams should validate external input, keep
-secrets in environment variables, set timeouts on network calls, and write focused tests for core
-business logic.
+secrets in environment variables, set timeouts on every network call, and write focused tests for
+core business logic. Any call to a third-party API must have a timeout and a defined behaviour
+when that timeout is hit.
+
+Services expose a health endpoint that reports the status of their own dependencies. Logs are
+structured and never contain credentials, access tokens, or personal data. Feature flags are
+removed within two release cycles of the feature reaching full rollout.

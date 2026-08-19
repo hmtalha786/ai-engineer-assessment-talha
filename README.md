@@ -1,61 +1,26 @@
 # AI Chatbot
 
-A FastAPI chatbot that answers questions using uploaded documents, superhero data, or grounded web search. Gemini selects the best source, generates a context-based answer, and the API returns only the sources that successfully contributed.
+A FastAPI chatbot with one endpoint, `POST /ask`. It reads a natural-language question, works out what the question is about, pulls facts from the right source, and answers using only what it retrieved. Every response lists the sources that actually contributed.
 
-## Tech stack
+Three sources are available, and Gemini picks between them (or combines documents + superheroes):
 
-| Area              | Technology                                               |
-| ----------------- | -------------------------------------------------------- |
-| API               | FastAPI, Uvicorn                                         |
-| AI                | Google Gemini chat, embeddings, and grounded search      |
-| RAG               | LangChain loaders/splitters and an in-memory FAISS index |
-| Validation/config | Pydantic and pydantic-settings                           |
-| External API      | Superhero API through async HTTPX                        |
-| Documents         | UTF-8 TXT and PDF through PyPDF                          |
-| Testing           | Pytest and pytest-asyncio                                |
+| Source | Used for |
+| --- | --- |
+| `text_rag` | The local text dataset in `docs/` (chunked, embedded, searched in FAISS) |
+| `superhero_api` | Named superheroes, via [superheroapi.com](https://superheroapi.com/) |
+| `web` | General or current questions that fit neither of the above |
 
-Python 3.11 or newer is required.
+The brief asked for two sources. The third one is deliberate: with only documents and
+superheroes, the router has no correct answer for "what is the capital of Peru" and has to
+misfile it into one of the two. A fallback route turns routing into a real decision — including
+the decision that neither dataset applies — and keeps the other two sources honest, because the
+model is never forced to reach for a source that cannot answer.
 
-## Architecture and files
+The LLM is **Google Gemini** (hosted, via AI Studio) — used twice per request: once to route, once to answer.
 
-| File                  | Responsibility                                                                                   |
-| --------------------- | ------------------------------------------------------------------------------------------------ |
-| `app/main.py`         | Creates FastAPI, initializes services, builds RAG at startup, and closes clients at shutdown     |
-| `app/api.py`          | Defines the `POST /ask` endpoint                                                                 |
-| `app/models.py`       | Settings, request/response validation, shared data models, and application errors                |
-| `app/route.py`        | Uses structured Gemini output to select the required information source                          |
-| `app/rag.py`          | Loads, chunks, embeds, indexes, and searches local documents                                     |
-| `app/sources.py`      | Retrieves Superhero API data and Gemini-grounded web results                                     |
-| `app/generate.py`     | Deduplicates context and generates the grounded final answer                                     |
-| `app/orchestrator.py` | Coordinates routing, concurrent retrieval, generation, source attribution, and dependency wiring |
-| `tests/test_app.py`   | Focused tests using deterministic embeddings, mocked HTTP, and fake services                     |
+## Setup
 
-The architecture is a small service pipeline with dependency injection. Every external source returns the same `ContextItem` model, so the orchestrator can process document, superhero, and web results uniformly.
-
-## Working flow
-
-1. At startup, TXT/PDF files in `docs/` are loaded, split, embedded, and indexed once in FAISS.
-2. `POST /ask` validates and trims the incoming question.
-3. Gemini routes it to `text_rag`, `superhero_api`, `web`, or the supported document-plus-superhero route.
-4. The orchestrator runs all selected retrievals concurrently.
-5. Successful results are normalized into `ContextItem` objects.
-6. The context builder removes duplicate content and attaches source labels.
-7. Gemini generates an answer using only the retrieved context.
-8. The API returns the answer, selected route, and sources that actually succeeded.
-
-In short: **validate -> route -> retrieve -> normalize -> generate -> respond**.
-
-## Important logic
-
-- **One-time RAG initialization:** the FAISS index is built during startup and reused for every request.
-- **Structured routing:** Pydantic validates Gemini's decision and rejects unsupported source combinations.
-- **Partial failure handling:** one failed source does not discard successful results from another source.
-- **Grounded generation:** the answer prompt permits only facts present in retrieved context.
-- **Safe document loading:** corrupt documents are skipped without stopping the server.
-- **Source accuracy:** response sources come from successful retrievals, not from model-generated claims.
-- **Testable design:** dependency injection allows external services to be replaced with predictable fakes.
-
-## Setup and run
+Requires Python 3.11+.
 
 ```powershell
 python -m venv .venv
@@ -64,46 +29,39 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Add credentials to `.env`:
+Fill in `.env`:
 
 ```env
-GEMINI_API_KEY=your-gemini-api-key
-SUPERHERO_API_TOKEN=your-superhero-api-token
+GEMINI_API_KEY=your-gemini-api-key          # aistudio.google.com
+SUPERHERO_API_TOKEN=your-superhero-api-token # superheroapi.com (sign in with GitHub)
 ```
 
-Place readable `.txt` or `.pdf` files in `docs/`, then run:
+Put any `.txt` or `.pdf` files you want searchable in `docs/`. The repo ships with three sample
+documents — an engineering handbook, a security policy, and an onboarding guide — which index to
+about a dozen chunks. Three overlapping-but-distinct documents mean retrieval has to pick the
+right file, not just the right paragraph.
+
+## Run
 
 ```powershell
-uvicorn app.main:app --reload
+uvicorn main:app --reload
 ```
 
-Restart after changing documents so the in-memory index is rebuilt. Never commit the real `.env` file.
-
-## API example
+The index is built once at startup, so restart after changing `docs/`. Interactive docs at `http://127.0.0.1:8000/docs`.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ask \
   -H "Content-Type: application/json" \
-  -d '{"question":"What are Batman\u0027s powers?"}'
+  -d '{"question":"What are Batman'\''s powers?"}'
 ```
-
-Response shape:
 
 ```json
 {
   "answer": "...",
-  "sources": [
-    {
-      "type": "superhero_api",
-      "name": "Batman",
-      "reference": null
-    }
-  ],
+  "sources": [{ "type": "superhero_api", "name": "Batman", "reference": null }],
   "route": ["superhero_api"]
 }
 ```
-
-Interactive documentation: `http://127.0.0.1:8000/docs`.
 
 ## Tests
 
@@ -111,13 +69,13 @@ Interactive documentation: `http://127.0.0.1:8000/docs`.
 pytest
 ```
 
-Tests cover validation, API failure handling, one-time RAG initialization, empty/corrupt documents, and combined-source orchestration.
+15 tests over what I considered the core logic: question and route validation, the superhero lookup (including the not-found and no-token paths), one-time index build, empty and corrupt documents, and the end-to-end pipeline with sources and partial-failure handling.
 
-## Future possibilities
+## Decisions and trade-offs
 
-- Persistent vector storage, hybrid search, and reranking
-- Conversation memory and streaming responses
-- Authentication, rate limiting, and caching
-- Structured logging, tracing, metrics, and health endpoints
-- Docker, CI/CD, cloud deployment, and automated evaluations
-- Additional retrieval tools and advanced workflow orchestration
+- **Two Gemini calls, not one.** Routing is a separate structured-output call so the model returns a validated `RouteDecision` rather than free text. Costs latency; buys a deterministic, testable routing step.
+- **Superhero lookups take two HTTP calls.** `/search/{name}` resolves the name to an id, then `/{id}` fetches the whole record at once. Fetching per-section (`/{id}/powerstats` etc.) would mean several calls for no gain.
+- **Sources come from retrievals, not the model.** The `sources` list is assembled from results that actually succeeded, so the model can't invent a citation.
+- **Partial failure is allowed.** If one selected source fails, the answer is still generated from the other. Only when everything fails does the request error.
+- **The index is in-memory and built at startup.** Simple and fast to read; means a restart is needed after changing `docs/`, and it doesn't survive scaling to multiple workers.
+- **Corners cut:** there's no auth or rate limiting on `/ask`, no conversation memory, and when two heroes share a name (the API has two entries called "Batman" — Bruce Wayne and Terry McGinnis) the first exact match wins rather than asking the user which one they meant.

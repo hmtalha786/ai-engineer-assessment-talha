@@ -1,0 +1,49 @@
+Information Security Policy
+
+SECRETS AND CREDENTIALS
+
+Secrets are never committed to version control. They live in the secrets manager and are injected
+as environment variables at runtime. A secret that reaches a repository is treated as compromised
+even if the commit is deleted: it must be rotated within four hours and the exposure recorded in
+the security log.
+
+Access tokens issued to services expire after ninety days. Personal access tokens expire after
+thirty. Rotation is the owning team's responsibility, and an expiring credential raises a warning
+fourteen days before it lapses.
+
+Shared accounts are not permitted. Where a vendor supports only one login, the credential is held
+in the secrets manager and access is granted individually and logged.
+
+ACCESS CONTROL
+
+Access follows least privilege. An engineer receives the permissions their role requires and no
+more. Production database write access is granted for a named task and expires after twenty-four
+hours; standing write access is held only by the platform team.
+
+Access reviews run quarterly. Each manager confirms that everyone on their team still needs the
+access they hold. Access is revoked within one business day of an employee changing role, and
+within one hour of them leaving the company.
+
+Multi-factor authentication is mandatory on every system that supports it. Hardware keys are
+required for production infrastructure and for the secrets manager; app-based codes are
+acceptable elsewhere. SMS is not accepted as a second factor.
+
+HANDLING CUSTOMER DATA
+
+Customer data is classified as confidential. It is not copied to a laptop, pasted into a
+third-party tool, or used in a test environment. Where realistic test data is needed, it is
+generated or anonymised, never sampled from production.
+
+Data is encrypted in transit and at rest. Backups are encrypted with a separate key and restore
+procedures are tested twice a year. Personal data is retained only as long as the stated purpose
+requires, and deletion requests are completed within thirty days.
+
+VULNERABILITY RESPONSE
+
+Reported vulnerabilities are triaged within one business day. Critical vulnerabilities are fixed
+or mitigated within seven days, high within thirty, and medium within ninety. A vulnerability that
+is being actively exploited is handled as a priority-one incident regardless of its rating.
+
+Dependencies are scanned on every build. A build that introduces a known critical vulnerability
+fails and cannot be deployed. Security researchers may report issues to the disclosure address
+and will receive an acknowledgement within two business days.

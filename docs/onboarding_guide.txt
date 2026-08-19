@@ -1,0 +1,51 @@
+New Engineer Onboarding Guide
+
+YOUR FIRST WEEK
+
+Day one is accounts and hardware. Your manager raises the access request before you start, so
+email, the code repository, the issue tracker, and the chat workspace should be waiting for you.
+If something is missing, ask in #it-help rather than borrowing a colleague's login.
+
+By the end of day two you should have the main application running locally and the test suite
+passing. This is the single best check that your environment is correct, and it is deliberately
+the first task. If it takes more than half a day, that is a bug in our setup documentation, not a
+failing on your part, and we want to hear about it.
+
+Your first pull request is due in your first week. It is expected to be small: a documentation
+fix, a test, or a minor bug. The point is to walk the whole path from branch to production once,
+while someone is sitting with you.
+
+Every new engineer is assigned an onboarding buddy from a different team. The buddy is not your
+manager and not your reviewer; they are the person you can ask questions you feel you should
+already know the answer to. Buddy pairings last for the first two months.
+
+ENVIRONMENTS
+
+We run three environments. Local is your machine and talks to a local database. Staging mirrors
+production and is where changes are verified before release; its data is anonymised and may be
+reset without warning. Production serves customers.
+
+Never point a local process at the production database. If you need production-shaped data, use
+the anonymised staging snapshot, which is refreshed weekly on Sunday nights.
+
+Environment configuration is read from environment variables, never from code. A missing required
+variable should stop the service at startup with a clear message rather than failing later on a
+request.
+
+TOOLING
+
+Python projects use uv for dependency management and ruff for linting and formatting. Both run in
+continuous integration, so it is worth running them locally before you push. Type hints are
+expected on new code, though we do not retrofit them across the whole codebase.
+
+Documentation lives beside the code it describes. A README explains how to set the project up and
+run it; anything longer belongs in the team handbook rather than in the repository.
+
+GETTING HELP
+
+Ask early. The team's rule of thumb is thirty minutes: if you are stuck for longer than that,
+post in your team channel with what you tried. Questions in public channels are preferred to
+direct messages, because the answer then helps the next person.
+
+Office hours run daily at 15:00 UTC. Anyone can drop in with a question, a design they want to
+talk through, or a change they would like a second opinion on before opening a pull request.
