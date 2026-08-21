@@ -1,5 +1,3 @@
-"""Focused unit tests that avoid real Gemini and Superhero API calls."""
-
 import json
 from pathlib import Path
 
@@ -151,12 +149,15 @@ async def test_fetch_hero_makes_exactly_two_calls(
         kwargs["transport"] = httpx.MockTransport(handler)
         return real_client(**kwargs)
 
-    monkeypatch.setattr(hero_api_call.httpx, "AsyncClient", client_with_mock_transport)
-    monkeypatch.setattr(settings, "superhero_api_token", SecretStr("test-token"))
+    monkeypatch.setattr(hero_api_call.httpx, "AsyncClient",
+                        client_with_mock_transport)
+    monkeypatch.setattr(settings, "superhero_api_token",
+                        SecretStr("test-token"))
 
     item = await fetch_hero("Batman")
 
-    assert called_paths == ["/api/test-token/search/Batman", "/api/test-token/70"]
+    assert called_paths == [
+        "/api/test-token/search/Batman", "/api/test-token/70"]
     assert item.source_name == "Batman"
     assert item.metadata == {"id": "70"}
     assert "intelligence" in item.content
@@ -263,7 +264,8 @@ async def test_combined_route_returns_actual_sources(
 
     async def fake_hero(name: str) -> ContextItem:
         return ContextItem(
-            content=json.dumps({"name": name, "powerstats": {"intelligence": "100"}}),
+            content=json.dumps(
+                {"name": name, "powerstats": {"intelligence": "100"}}),
             source_type="superhero_api",
             source_name=name,
         )
@@ -312,7 +314,8 @@ async def test_all_sources_failing_raises_the_first_failure(
 # --- Context building -----------------------------------------------------
 def test_duplicate_content_is_only_included_once() -> None:
     item = ContextItem(content="same text", source_type="web", source_name="A")
-    duplicate = ContextItem(content="same text", source_type="web", source_name="B")
+    duplicate = ContextItem(content="same text",
+                            source_type="web", source_name="B")
 
     context = build_context([item, duplicate])
 

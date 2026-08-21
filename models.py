@@ -1,10 +1,3 @@
-"""Settings, API models, shared data types, and application errors.
-
-Only data declarations and small helper functions live here. Pydantic models and
-the error type are classes because that is what pydantic/FastAPI and Python's
-`raise` require -- there are no service or orchestration classes anywhere.
-"""
-
 from pathlib import Path
 from typing import Any, Literal
 
@@ -135,7 +128,8 @@ def clean_question(question: str) -> str:
     # Length validation alone would allow a string containing only spaces.
     cleaned = question.strip()
     if len(cleaned) < 2:
-        raise bad_request("question must contain at least two non-whitespace characters")
+        raise bad_request(
+            "question must contain at least two non-whitespace characters")
     return cleaned
 
 

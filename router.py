@@ -1,6 +1,3 @@
-"""Step 2 of the request pipeline: decide which sources a question needs."""
-
-
 from models import (
     RouteDecision,
     configuration_error,
@@ -43,11 +40,13 @@ def normalize_route(decision: RouteDecision) -> RouteDecision:
     decision.sources = list(dict.fromkeys(decision.sources))
 
     if tuple(decision.sources) not in ALLOWED_ROUTES:
-        raise generation_error("Gemini selected an unsupported source combination.")
+        raise generation_error(
+            "Gemini selected an unsupported source combination.")
 
     if "superhero_api" in decision.sources:
         if not decision.superhero_names:
-            raise generation_error("Gemini selected the superhero route without a name.")
+            raise generation_error(
+                "Gemini selected the superhero route without a name.")
     else:
         # Names are meaningless without the superhero route.
         decision.superhero_names = []
@@ -59,7 +58,8 @@ async def decide_route(question: str) -> RouteDecision:
     """Ask Gemini for a validated RouteDecision instead of free-form text."""
     llm = get_chat_model()
     if llm is None:
-        raise configuration_error("GEMINI_API_KEY is required to route questions.")
+        raise configuration_error(
+            "GEMINI_API_KEY is required to route questions.")
 
     try:
         # LangChain parses model output directly into the Pydantic route model.
@@ -69,6 +69,7 @@ async def decide_route(question: str) -> RouteDecision:
         # Validate again so fake/test models and real output follow one path.
         decision = RouteDecision.model_validate(raw)
     except Exception as exc:
-        raise generation_error("Gemini could not determine an information route.") from exc
+        raise generation_error(
+            "Gemini could not determine an information route.") from exc
 
     return normalize_route(decision)

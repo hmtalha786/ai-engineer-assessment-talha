@@ -93,7 +93,8 @@ async def run_selected_tools(
         if isinstance(result, AppError):
             failures.append(result)
         elif isinstance(result, Exception):
-            failures.append(retrieval_error("An information source failed unexpectedly."))
+            failures.append(retrieval_error(
+                "An information source failed unexpectedly."))
         elif isinstance(result, list):
             items.extend(result)
         else:
@@ -115,4 +116,5 @@ def collect_sources(items: list[ContextItem]) -> list[Source]:
 
 
 # Registered without a decorator so the route is visible as an ordinary call.
-api_router.add_api_route("/ask", ask, methods=["POST"], response_model=AskResponse)
+api_router.add_api_route(
+    "/ask", ask, methods=["POST"], response_model=AskResponse)

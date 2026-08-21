@@ -1,16 +1,3 @@
-"""Application entry point.
-
-    uvicorn main:app --reload
-
-Reading this file top to bottom tells you everything that happens at startup:
-
-    1. create the FastAPI server and attach the POST /ask endpoint (api.py)
-    2. look in the ./docs folder for .txt and .pdf files
-    3. if any are there, build the FAISS index from them once (tools/rag_generate.py)
-
-Then every request is handled by api.py, which walks the pipeline step by step.
-"""
-
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -19,21 +6,24 @@ from models import AppError, settings
 from tools.rag_generate import build_index, find_documents
 
 
+# --- error handling ---------------------------------------------------------
 async def handle_app_error(_request: Request, exc: Exception) -> JSONResponse:
     """Convert expected application errors into a clean JSON response."""
-    error = exc if isinstance(exc, AppError) else AppError("Internal server error.")
+    error = exc if isinstance(exc, AppError) else AppError(
+        "Internal server error.")
     return JSONResponse(status_code=error.status_code, content={"detail": error.message})
 
 
+# --- FastAPI app creation ---------------------------------------------------
 def create_app() -> FastAPI:
     """Step 1: build the FastAPI server and register the endpoint and errors."""
     application = FastAPI(title="Sourced AI Chatbot", version="2.0.0")
-    # No decorators: the route and the error handler are registered by calls.
     application.include_router(api_router)
     application.add_exception_handler(AppError, handle_app_error)
     return application
 
 
+# --- document loading -------------------------------------------------------
 def load_documents_into_index() -> None:
     """Steps 2 and 3: scan ./docs and build the vector index once, at startup.
 
@@ -48,7 +38,8 @@ def load_documents_into_index() -> None:
         return
 
     names = ", ".join(path.name for path in documents)
-    print(f"[startup] Found {len(documents)} document(s) in {settings.docs_dir}: {names}")
+    print(
+        f"[startup] Found {len(documents)} document(s) in {settings.docs_dir}: {names}")
 
     # Parse -> chunk -> embed -> store in FAISS, with the file name as metadata.
     index = build_index(settings.docs_dir)
@@ -57,9 +48,11 @@ def load_documents_into_index() -> None:
     for name, error in index["errors"].items():
         print(f"[startup] Skipped unreadable file {name} ({error})")
     if index["retriever"] is None:
-        print(f"[startup] The document route will be unavailable: {index['reason']}")
+        print(
+            f"[startup] The document route will be unavailable: {index['reason']}")
     else:
-        print(f"[startup] Indexed {index['chunks']} chunk(s) from {len(index['files'])} file(s)")
+        print(
+            f"[startup] Indexed {index['chunks']} chunk(s) from {len(index['files'])} file(s)")
 
 
 # --- what actually runs when uvicorn imports this module -------------------

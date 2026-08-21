@@ -1,6 +1,3 @@
-"""Final pipeline steps: build grounded context and generate the answer."""
-
-
 from models import (
     ContextItem,
     configuration_error,
@@ -42,7 +39,8 @@ async def generate_answer(question: str, context: str) -> str:
     """Call Gemini with the grounded context and reject empty or failed answers."""
     llm = get_chat_model()
     if llm is None:
-        raise configuration_error("GEMINI_API_KEY is required to generate answers.")
+        raise configuration_error(
+            "GEMINI_API_KEY is required to generate answers.")
 
     try:
         response = await llm.ainvoke(

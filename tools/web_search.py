@@ -1,5 +1,5 @@
-"""Grounded web search through Gemini's Google Search tool."""
-
+from google import genai
+from google.genai import types
 
 from models import ContextItem, configuration_error, retrieval_error, secret, settings
 
@@ -17,7 +17,8 @@ def extract_references(response: object) -> list[tuple[str, str | None]]:
         metadata = response.candidates[0].grounding_metadata
         for chunk in metadata.grounding_chunks or []:
             if chunk.web and chunk.web.uri:
-                references.append((chunk.web.title or "Web result", chunk.web.uri))
+                references.append(
+                    (chunk.web.title or "Web result", chunk.web.uri))
     except (AttributeError, IndexError, TypeError):
         references = []
 
@@ -28,10 +29,8 @@ def extract_references(response: object) -> list[tuple[str, str | None]]:
 async def search_web(question: str) -> list[ContextItem]:
     """Return a grounded web summary plus any citations supplied by Gemini."""
     if not settings.gemini_api_key:
-        raise configuration_error("GEMINI_API_KEY is required for web retrieval.")
-
-    from google import genai
-    from google.genai import types
+        raise configuration_error(
+            "GEMINI_API_KEY is required for web retrieval.")
 
     client = genai.Client(api_key=secret(settings.gemini_api_key))
     try:
@@ -40,7 +39,7 @@ async def search_web(question: str) -> list[ContextItem]:
             model=settings.gemini_chat_model,
             contents=SEARCH_PROMPT.format(question=question),
             config=types.GenerateContentConfig(
-                temperature=0,
+                temperature=0, # Deterministic output for factual retrieval.
                 tools=[types.Tool(google_search=types.GoogleSearch())],
             ),
         )
@@ -49,7 +48,8 @@ async def search_web(question: str) -> list[ContextItem]:
 
     text = (response.text or "").strip()
     if not text:
-        raise retrieval_error("Gemini web retrieval returned no usable content.")
+        raise retrieval_error(
+            "Gemini web retrieval returned no usable content.")
 
     return [
         ContextItem(

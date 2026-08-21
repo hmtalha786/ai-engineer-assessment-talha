@@ -1,20 +1,10 @@
-"""Build the FAISS document index once at application startup.
-
-Called by main.py. Parses every .txt/.pdf in the docs folder, splits them into
-overlapping chunks, embeds them, and stores the vectors in FAISS with the file
-name kept as metadata so answers can cite the file they came from.
-
-This runs before the event loop starts, so it is deliberately plain synchronous
-code -- no threads and no async needed for a one-time startup job.
-
-Nothing here prints or raises. Whatever happened is recorded in the index state
-(``reason``, ``files``, ``errors``, ``chunks``) and main.py reports it.
-"""
-
 from pathlib import Path
 from typing import Any
 
 from models import settings
+
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Module-level index state. rag_retrieve.py reads this through get_index().
 _index: dict[str, Any] = {
@@ -25,18 +15,22 @@ _index: dict[str, Any] = {
     "chunks": 0,
 }
 
+# Supported document file extensions.
 SUPPORTED_SUFFIXES = {".txt", ".pdf"}
 
+# Reason for no documents being available.
 NO_DOCUMENTS_REASON = (
     "No readable .txt or .pdf documents are available in the docs directory."
 )
 
 
+# --- index state access -------------------------------------------------------
 def get_index() -> dict[str, Any]:
     """Expose the shared index state to the retrieval tool."""
     return _index
 
 
+# --- document discovery and loading ------------------------------------------
 def find_documents(docs_dir: Path) -> list[Path]:
     """Return the supported files in the docs folder, in a stable order."""
     if not docs_dir.is_dir():
@@ -49,9 +43,9 @@ def find_documents(docs_dir: Path) -> list[Path]:
     )
 
 
+# --- document parsing, chunking, and indexing --------------------------------
 def load_documents(paths: list[Path]) -> list[Any]:
     """Read supported files, recording rather than raising on a bad file."""
-    from langchain_community.document_loaders import PyPDFLoader, TextLoader
 
     documents: list[Any] = []
     for path in paths:
@@ -73,9 +67,9 @@ def load_documents(paths: list[Path]) -> list[Any]:
     return documents
 
 
+# --- document chunking -------------------------------------------------------
 def split_documents(documents: list[Any]) -> list[Any]:
     """Split documents into overlapping chunks that retain boundary context."""
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=settings.rag_chunk_size,
@@ -84,6 +78,7 @@ def split_documents(documents: list[Any]) -> list[Any]:
     return splitter.split_documents(documents)
 
 
+# --- document embedding and FAISS index construction -------------------------
 def build_index(docs_dir: Path | None = None, embeddings: Any = None) -> dict[str, Any]:
     """Parse -> chunk -> embed -> store in FAISS. Runs exactly once at startup.
 

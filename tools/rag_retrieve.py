@@ -1,11 +1,10 @@
-"""Search the FAISS document index built at startup by rag_generate.py."""
-
 from pathlib import Path
 
 from models import ContextItem, retrieval_error
 from tools.rag_generate import get_index
 
 
+# --- document retrieval ------------------------------------------------------
 async def retrieve_documents(question: str) -> list[ContextItem]:
     """Return the relevant document chunks in the shared ContextItem format."""
     index = get_index()

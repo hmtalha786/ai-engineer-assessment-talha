@@ -1,15 +1,3 @@
-"""Superhero API tool -- https://superheroapi.com/
-
-Users ask by name but the API is keyed by numeric character id, so a lookup is
-two calls:
-
-    1. GET /api/{token}/search/{name}   -> find the character, read its "id"
-    2. GET /api/{token}/{id}            -> fetch the whole record in one request
-
-The second call returns powerstats, biography, appearance, work and connections
-together, so there is never a reason to request those sections one at a time.
-"""
-
 import json
 from typing import Any
 from urllib.parse import quote
@@ -26,7 +14,8 @@ from models import (
 
 # Everything worth sending to the LLM. "image" is dropped -- a portrait URL
 # cannot help answer a question, and it only adds noise to the prompt.
-RECORD_FIELDS = ("name", "powerstats", "biography", "appearance", "work", "connections")
+RECORD_FIELDS = ("name", "powerstats", "biography",
+                 "appearance", "work", "connections")
 
 
 async def _get_json(client: httpx.AsyncClient, path: str) -> dict[str, Any]:
@@ -35,21 +24,25 @@ async def _get_json(client: httpx.AsyncClient, path: str) -> dict[str, Any]:
         response = await client.get(path)
         response.raise_for_status()
     except httpx.TimeoutException as exc:
-        raise retrieval_error("The Superhero API timed out.", status_code=504) from exc
+        raise retrieval_error(
+            "The Superhero API timed out.", status_code=504) from exc
     except httpx.HTTPStatusError as exc:
         raise retrieval_error(
             f"The Superhero API returned HTTP {exc.response.status_code}."
         ) from exc
     except httpx.HTTPError as exc:
-        raise retrieval_error("The Superhero API could not be reached.") from exc
+        raise retrieval_error(
+            "The Superhero API could not be reached.") from exc
 
     try:
         payload = response.json()
     except ValueError as exc:
-        raise retrieval_error("The Superhero API returned malformed JSON.") from exc
+        raise retrieval_error(
+            "The Superhero API returned malformed JSON.") from exc
 
     if not isinstance(payload, dict):
-        raise retrieval_error("The Superhero API returned an unexpected response.")
+        raise retrieval_error(
+            "The Superhero API returned an unexpected response.")
     return payload
 
 
@@ -61,7 +54,8 @@ async def search_hero_id(client: httpx.AsyncClient, name: str) -> tuple[str, str
 
     results = payload.get("results")
     if payload.get("response") != "success" or not results:
-        raise retrieval_error(f"No superhero named '{name}' was found.", status_code=404)
+        raise retrieval_error(
+            f"No superhero named '{name}' was found.", status_code=404)
 
     # Prefer an exact name match; otherwise use the API's best-ranked result.
     hero = next(
@@ -74,7 +68,8 @@ async def search_hero_id(client: httpx.AsyncClient, name: str) -> tuple[str, str
         results[0],
     )
     if not isinstance(hero, dict) or not hero.get("id") or not hero.get("name"):
-        raise retrieval_error("The Superhero API returned an unexpected response.")
+        raise retrieval_error(
+            "The Superhero API returned an unexpected response.")
 
     return str(hero["id"]), str(hero["name"])
 
